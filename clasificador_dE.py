@@ -43,7 +43,7 @@ cv2.namedWindow("image")
 cv2.setMouseCallback("image", on_EVENT_LBUTTONDOWN)
 
 while(1):
-    print("HOLA")
+    print("Comenzar dando click en pixel del cielo 20 veces, luego bosque 20 veces y por ultimo suelo 20 veces")
     cv2.imshow("image", image)
     if cv2.waitKey(0) & 0xFF == 27:
         break

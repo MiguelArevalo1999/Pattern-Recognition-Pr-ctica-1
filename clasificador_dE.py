@@ -1,4 +1,5 @@
 from math import sqrt
+from PIL import Image
 import cv2
 import numpy as np
 import skimage
@@ -68,7 +69,7 @@ opening_img = cv2.morphologyEx(binarized_image,cv2.MORPH_OPEN, kernel, iteration
 cv2.imshow("Opening image",opening_img)
 # Noise removal
 closing_img = cv2.morphologyEx(binarized_image,cv2.MORPH_CLOSE, kernel, iterations = 4)
-cv2.imshow("Closing image",opening_img)
+cv2.imshow("Closing image",closing_img)
 
 #Binarizando imagen
 cv2.imwrite('binarized_image.jpg', binarized_image)
@@ -92,7 +93,7 @@ local_max_location.shape
 dist_transform_copy = euclidean.copy()
 for i in range(local_max_location.shape[0]):
   cv2.circle( dist_transform_copy, (local_max_location[i][1],local_max_location[i][0]  ), 5, 255 )
-cv2.imshow("Copia Distancia Euclidea", dist_transform_copy)
+cv2.imshow("Marcas Distancia Euclidea", dist_transform_copy)
 
 markers = np.zeros_like(dist_transform)
 labels = np.arange(kmeans.n_clusters)
@@ -115,8 +116,30 @@ for i in range(index_non_zero_markers.shape[0]):
 cv2.imshow("Enumeración de marcas", markers_copy)
 markers = markers.astype(np.int32)
 segmented = cv2.watershed(image, markers)
-cv2.imshow("Segmentacion", segmented)
 print(segmented)
+
+dpi = plt.rcParams['figure.dpi']
+figsize = image.shape[1] / float(dpi), image.shape[0] / float(dpi)
+
+plt.figure(figsize=figsize)
+plt.imshow(segmented, cmap="jet")
+filename = "markers.jpg"
+plt.axis('off')
+plt.savefig(filename, bbox_inches = 'tight', pad_inches = 0)
+
+overlay = cv2.imread("markers.jpg")
+overlay = np.asarray(overlay)
+
+image_copy = image.copy()
+overlay_copy = overlay.copy()
+overlay_copy = cv2.resize(overlay_copy, (image_copy.shape[1], image_copy.shape[0]))
+final_img = cv2.addWeighted(overlay_copy, 0.5, image_copy, 0.5,	0)
+
+cv2.imshow("Imagen coloreada", final_img)
+img_c = image.copy() 
+img_c[segmented == -1] = [255, 0, 0]
+
+cv2.imshow("Output final",img_c)
 
 cv2.imshow("Imagen original", image)
 cv2.imshow("Euclidean Distance", euclidean)

@@ -5,7 +5,7 @@ import skimage
 from skimage.feature import peak_local_max
 from scipy import ndimage as ndi
 import skimage.segmentation
-
+from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 
@@ -60,50 +60,67 @@ image = cv2.imread('CMA-x1.png')
 gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY) #Imagen en escala de grises
 
 
-th, binarized_image = cv2.threshold(gray, 128, 192, cv2.THRESH_OTSU)
+ret, binarized_image = cv2.threshold(gray, 128, 192, cv2.THRESH_BINARY)
+# Noise removal
+kernel = np.ones((3),np.uint8)
+opening_img = cv2.morphologyEx(binarized_image,cv2.MORPH_OPEN, kernel, iterations = 9)
 
-print(th)
+cv2.imshow("Opening image",opening_img)
+# Noise removal
+closing_img = cv2.morphologyEx(binarized_image,cv2.MORPH_CLOSE, kernel, iterations = 4)
+cv2.imshow("Closing image",opening_img)
 
 #Binarizando imagen
 cv2.imwrite('binarized_image.jpg', binarized_image)
-cv2.namedWindow("image")
 #Distancia Euclidea
 dist_transform = cv2.distanceTransform(binarized_image, cv2.DIST_L2,3)
 cv2.imwrite('dist_transform_image.jpg', dist_transform)
 euclidean =  cv2.imread('dist_transform_image.jpg')
 
+
 local_max_location = peak_local_max(dist_transform, min_distance=1)
 local_max_boolean = peak_local_max(dist_transform, min_distance=1)
 
-# print(local_max_boolean)
-img1 = np.zeros((7, 7))
-img1[2, 2] = 4
-img1[2, 4] = 7
-print(img1)
-peak_local_max(img1, min_distance=1)
-peak_local_max(img1, min_distance=2)
-markers, _ = ndi.label(local_max_boolean)
-#Esto no jala marca error  87
-segmented = skimage.segmentation.watershed(255-dist_transform, markers, mask=binarized_image)
-fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
-ax = axes.ravel()
+kmeans = KMeans(n_clusters=30)
+kmeans.fit(local_max_location)
+local_max_location = kmeans.cluster_centers_.copy()
 
-ax[0].imshow(binarized_image, cmap=plt.cm.gray)
-ax[0].set_title('Input image')
-ax[1].imshow(-dist_transform, cmap=plt.cm.gray)
-ax[1].set_title('Distance transform')
-ax[2].imshow(segmented, cmap=plt.cm.nipy_spectral)
-ax[2].set_title('Separated objects')
+# Kmeans is returning a float data type so we need to convert it to an int. 
+local_max_location = local_max_location.astype(int)
 
-for a in ax:
-    a.set_axis_off()
+local_max_location.shape
+dist_transform_copy = euclidean.copy()
+for i in range(local_max_location.shape[0]):
+  cv2.circle( dist_transform_copy, (local_max_location[i][1],local_max_location[i][0]  ), 5, 255 )
+cv2.imshow("Copia Distancia Euclidea", dist_transform_copy)
 
-fig.tight_layout()
-plt.show()
+markers = np.zeros_like(dist_transform)
+labels = np.arange(kmeans.n_clusters)
+markers[local_max_location[:,0],local_max_location[:,1]   ] = labels + 1
 
-cv2.imshow("image", image)
+# Convert all local markers to an integer. This because cluster centers will be float numbers. 
+markers = markers.astype(int)
+
+markers_copy = markers.copy()
+index_non_zero_markers = np.argwhere(markers != 0)
+
+markers_copy = markers_copy.astype(np.uint8)
+
+index_non_zero_markers
+font = cv2.FONT_HERSHEY_SIMPLEX
+for i in range(index_non_zero_markers.shape[0]):
+  string_text = str(markers[index_non_zero_markers[i][0] ,index_non_zero_markers[i][1]    ])
+  cv2.putText( markers_copy, string_text, (index_non_zero_markers[i][1], index_non_zero_markers[i][0]), font, 1, 255)
+
+cv2.imshow("Enumeración de marcas", markers_copy)
+markers = markers.astype(np.int32)
+segmented = cv2.watershed(image, markers)
+cv2.imshow("Segmentacion", segmented)
+print(segmented)
+
+cv2.imshow("Imagen original", image)
 cv2.imshow("Euclidean Distance", euclidean)
-cv2.waitKey(1000)
+cv2.waitKey(0)
 cv2.setMouseCallback("image", on_EVENT_LBUTTONDOWN)
 
 # while(1):

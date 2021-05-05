@@ -1,6 +1,13 @@
 from math import sqrt
 import cv2
 import numpy as np
+import skimage
+from skimage.feature import peak_local_max
+from scipy import ndimage as ndi
+import skimage.segmentation
+
+import matplotlib.pyplot as plt
+
 
 clase1 = [[200,160,120],[210,170,130],[215,172,133],[210,165,134],[198,177,138],
          [146,112,75],[200,168,130],[222,188,150],[148,113,81],[199,164,126],
@@ -50,14 +57,60 @@ def on_EVENT_LBUTTONDOWN(event, x, y, flags, param):
 
 
 image = cv2.imread('CMA-x1.png')
+gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY) #Imagen en escala de grises
+
+
+th, binarized_image = cv2.threshold(gray, 128, 192, cv2.THRESH_OTSU)
+
+print(th)
+
+#Binarizando imagen
+cv2.imwrite('binarized_image.jpg', binarized_image)
 cv2.namedWindow("image")
+#Distancia Euclidea
+dist_transform = cv2.distanceTransform(binarized_image, cv2.DIST_L2,3)
+cv2.imwrite('dist_transform_image.jpg', dist_transform)
+euclidean =  cv2.imread('dist_transform_image.jpg')
+
+local_max_location = peak_local_max(dist_transform, min_distance=1)
+local_max_boolean = peak_local_max(dist_transform, min_distance=1)
+
+# print(local_max_boolean)
+img1 = np.zeros((7, 7))
+img1[2, 2] = 4
+img1[2, 4] = 7
+print(img1)
+peak_local_max(img1, min_distance=1)
+peak_local_max(img1, min_distance=2)
+markers, _ = ndi.label(local_max_boolean)
+segmented = skimage.segmentation.watershed(255-dist_transform, markers, mask=binarized_image)
+fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
+ax = axes.ravel()
+
+#Esto no jala
+ax[0].imshow(binarized_image, cmap=plt.cm.gray)
+ax[0].set_title('Input image')
+ax[1].imshow(-dist_transform, cmap=plt.cm.gray)
+ax[1].set_title('Distance transform')
+ax[2].imshow(segmented, cmap=plt.cm.nipy_spectral)
+ax[2].set_title('Separated objects')
+
+for a in ax:
+    a.set_axis_off()
+
+fig.tight_layout()
+plt.show()
+
+cv2.imshow("image", image)
+cv2.imshow("Euclidean Distance", euclidean)
+cv2.waitKey(1000)
 cv2.setMouseCallback("image", on_EVENT_LBUTTONDOWN)
 
-while(1):
-    print("Comenzar dando click en pixel del cielo 20 veces, luego bosque 20 veces y por ultimo suelo 20 veces")
-    cv2.imshow("image", image)
-    if cv2.waitKey(0) & 0xFF == 27:
-        break
+# while(1):
+#     print("Comenzar dando click en pixel del cielo 20 veces, luego bosque 20 veces y por ultimo suelo 20 veces")
+
+#     if cv2.waitKey(0) & 0xFF == 27:
+#         break
 
 cv2.destroyAllWindows()
 
@@ -72,7 +125,7 @@ def calcularMedia(clase1):
 
   return media
 
-#Se utiliza el canal rogo y verde
+#Se utiliza el canal rojo y verde
 def funcionDiscriminante(claseA,claseB):
   A = [0,0,0]
   for i in range(2):

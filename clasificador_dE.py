@@ -83,11 +83,11 @@ print(img1)
 peak_local_max(img1, min_distance=1)
 peak_local_max(img1, min_distance=2)
 markers, _ = ndi.label(local_max_boolean)
+#Esto no jala marca error  87
 segmented = skimage.segmentation.watershed(255-dist_transform, markers, mask=binarized_image)
 fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
 ax = axes.ravel()
 
-#Esto no jala
 ax[0].imshow(binarized_image, cmap=plt.cm.gray)
 ax[0].set_title('Input image')
 ax[1].imshow(-dist_transform, cmap=plt.cm.gray)
